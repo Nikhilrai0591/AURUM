@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AURUM · MCX Gold Relative-Value Intelligence</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪙</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+:root{--bg:#0b0a08;--card:#16130d;--line:#2e2715;--gold:#f5c542;--gold2:#b8860b;--tx:#f3ecd8;--mut:#9a9179;--ok:#3ddc97;--bad:#ff5d5d;--warn:#ffb020}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(1200px 600px at 80% -10%,#3a2c0a55,transparent),var(--bg);color:var(--tx);font:14px Inter,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#0b0a08ee;backdrop-filter:blur(8px);z-index:9}
+h1{font:700 26px 'Playfair Display',serif;margin:0;background:linear-gradient(90deg,#fff3c4,var(--gold),var(--gold2));-webkit-background-clip:text;color:transparent;letter-spacing:3px}
+h1 small{font:400 11px Inter;letter-spacing:1px;color:var(--mut);-webkit-text-fill-color:var(--mut);margin-left:10px}
+nav{display:flex;gap:6px;flex-wrap:wrap}nav button,.btn{background:#1d1810;border:1px solid var(--line);color:var(--tx);padding:8px 14px;border-radius:10px;cursor:pointer;font:600 13px Inter}
+nav button.on,.btn.gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#1a1303;border:0}
+.btn:hover,nav button:hover{filter:brightness(1.2)}
+main{padding:22px 28px;max-width:1400px;margin:auto}.tab{display:none}.tab.on{display:block}
+.grid{display:grid;gap:16px}.k4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}.g2{grid-template-columns:repeat(auto-fit,minmax(480px,1fr))}
+.card{background:linear-gradient(180deg,#1b1710,var(--card));border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 8px 30px #0008}
+.kpi b{display:block;font:800 28px Inter;color:var(--gold);margin-top:4px}.kpi span,.mut{color:var(--mut);font-size:12px}
+table{width:100%;border-collapse:collapse}th,td{padding:9px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase}
+th:first-child,td:first-child{text-align:left}tr.row{cursor:pointer}tr.row:hover{background:#ffffff08}
+.badge{padding:3px 10px;border-radius:99px;font:700 11px Inter}.SIGNAL{background:#3ddc9722;color:var(--ok);border:1px solid var(--ok)}.WATCH{background:#ffb02022;color:var(--warn)}.QUIET{background:#ffffff10;color:var(--mut)}.ILLIQUID{background:#ff5d5d22;color:var(--bad)}
+.bar{display:flex;flex-wrap:wrap;gap:14px;align-items:end;margin-bottom:16px}.bar label{display:flex;flex-direction:column;gap:5px;color:var(--mut);font-size:11px;text-transform:uppercase}
+input,select{background:#100e09;border:1px solid var(--line);color:var(--tx);padding:8px;border-radius:8px;font:13px Inter}input[type=range]{padding:0;accent-color:var(--gold)}
+.banner{padding:14px 18px;border-radius:14px;margin-bottom:16px;font-weight:600;border:1px solid}.banner.q{background:#ffffff08;border-color:var(--line)}.banner.s{background:#3ddc9712;border-color:var(--ok)}.banner.n{background:#ffb02012;border-color:var(--warn)}
+#explain{line-height:1.6}#toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--gold);padding:12px 18px;border-radius:12px;display:none;z-index:99}
+.tag{background:#f5c54222;color:var(--gold);padding:3px 10px;border-radius:99px;font:700 11px Inter}
+</style></head><body>
+<header>
+ <h1>AURUM<small>MCX GOLD RELATIVE-VALUE INTELLIGENCE</small></h1>
+ <nav id="nav"></nav>
+ <div style="display:flex;gap:8px;align-items:center"><span class="tag" id="src">connecting…</span><button class="btn" onclick="tab('data')">⚙ Data</button></div>
+</header>
+<main>
+<section class="tab on" id="t-dash">
+ <div class="bar">
+  <label>Trading date<input type="date" id="date"></label>
+  <label style="flex:1;min-width:220px">Scrub history<input type="range" id="scrub" min="0" max="0" value="0"></label>
+  <label>z-threshold <input id="z" type="number" step=".1" value="2" style="width:80px"></label>
+  <label>Min volume <input id="minvol" type="number" value="50" style="width:90px"></label>
+  <label>Cost bps/fill <input id="cost" type="number" step=".5" value="1" style="width:90px"></label>
+ </div>
+ <div id="banner"></div>
+ <div class="grid k4" id="kpis"></div><br>
+ <div class="grid g2">
+  <div class="card"><h3>Relative-value scanner <span class="mut">(click a row to explain)</span></h3><div style="overflow:auto"><table id="tbl"></table></div></div>
+  <div class="card"><h3>Analyst explanation</h3><div id="explain" class="mut">Select a spread to see evidence-based reasoning: normalization, carry adjustment, z-score, liquidity and cost hurdle.</div></div>
+  <div class="card"><h3>Normalized prices <span class="mut">₹ / 10 g · 999 basis</span></h3><div id="c-norm" style="height:340px"></div></div>
+  <div class="card"><h3>Term structure <span class="mut">by days to expiry</span></h3><div id="c-curve" style="height:340px"></div></div>
+ </div>
+</section>
+<section class="tab" id="t-spread"><div class="bar"><label>Spread<select id="sel"></select></label></div>
+ <div class="card"><h3>Carry-adjusted spread vs past-only baseline</h3><div id="c-spread" style="height:380px"></div></div><br>
+ <div class="card"><h3>Z-score <span class="mut">(dots = actionable signals)</span></h3><div id="c-z" style="height:260px"></div></div></section>
+<section class="tab" id="t-bt">
+ <div class="bar">
+  <label>Entry z<input id="b_zin" type="number" step=".1" value="2" style="width:80px"></label>
+  <label>Exit z<input id="b_zout" type="number" step=".1" value=".5" style="width:80px"></label>
+  <label>Max hold (d)<input id="b_hold" type="number" value="10" style="width:80px"></label>
+  <label>Cost bps/fill<input id="b_cost" type="number" step=".5" value="1" style="width:80px"></label>
+  <label>Thin slip bps<input id="b_slip" type="number" step=".5" value="3" style="width:80px"></label>
+  <label>Thin vol &lt;<input id="b_thin" type="number" value="100" style="width:80px"></label>
+  <button class="btn gold" onclick="runBT()">▶ Run walk-forward</button></div>
+ <div id="b_banner"></div><div class="grid k4" id="b_kpi"></div><br>
+ <div class="grid g2"><div class="card"><h3>Net equity (bps of notional)</h3><div id="c-eq" style="height:320px"></div></div>
+ <div class="card"><h3>Strategy vs gold move <span class="mut">per trade</span></h3><div id="c-gold" style="height:320px"></div></div></div><br>
+ <div class="card"><h3>Trades</h3><div style="overflow:auto;max-height:320px"><table id="b_tbl"></table></div></div></section>
+<section class="tab" id="t-life"><div class="card"><h3>Contract lifecycle <span class="mut">listing → liquidity → exit-by (3 days before expiry/tender)</span></h3><div id="c-life" style="height:520px"></div></div></section>
+<section class="tab" id="t-data"><div class="card" style="max-width:720px"><h3>Data & connection</h3>
+ <p class="mut">Backend URL</p><input id="api" style="width:100%"><br><br>
+ <button class="btn" onclick="saveApi()">Save & reconnect</button> <button class="btn" onclick="post('/api/demo')">Load synthetic demo</button><hr style="border-color:var(--line)">
+ <p class="mut">Upload MCX Daily Bhavcopy CSV(s) (Symbol, Date, ExpiryDate, Close, Volume, OpenInterest)</p>
+ <input type="file" id="file" multiple> <button class="btn gold" onclick="upload()">Upload</button><hr style="border-color:var(--line)">
+ <p class="mut">Best-effort live pull of one trading day (validated against returned Date)</p>
+ <input type="date" id="fd"> <button class="btn" onclick="post('/api/fetch?date='+fd.value)">Fetch day</button></div></section>
+</main><div id="toast"></div>
+<script>
+const $=s=>document.getElementById(s);let API=localStorage.aurumApi||window.AURUM_API||"http://localhost:8000",META,SNAP,SEL;
+const PL={paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#f3ecd8'},margin:{t:10,l:55,r:15,b:40},xaxis:{gridcolor:'#2e2715'},yaxis:{gridcolor:'#2e2715'},legend:{orientation:'h'}};
+const GOLD=['#f5c542','#3ddc97','#6ea8ff','#ff8a5c'];
+const TABS=[['dash','📊 Dashboard'],['spread','📈 Spread Explorer'],['bt','🧪 Backtest'],['life','🗓 Lifecycle']];
+$('nav').innerHTML=TABS.map(t=>`<button data-t="${t[0]}" onclick="tab('${t[0]}')">${t[1]}</button>`).join('');
+function tab(n){document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('on',e.id=='t-'+n));document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==n));
+ if(n=='spread')loadSeries();if(n=='life')loadLife();}
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3500)}
+async function get(p){const r=await fetch(API+p);if(!r.ok)throw new Error((await r.json()).detail||r.status);return r.json()}
+async function post(p,b){try{const r=await fetch(API+p,{method:'POST',body:b});if(!r.ok)throw new Error((await r.json()).detail||r.status);toast('Done ✔');init()}catch(e){toast('⚠ '+e.message)}}
+function upload(){const f=new FormData();[...$('file').files].forEach(x=>f.append('files',x));post('/api/upload',f)}
+function saveApi(){API=$('api').value.replace(/\/$/,'');localStorage.aurumApi=API;init()}
+const P=()=>`win=20&z=${$('z').value}&minvol=${$('minvol').value}&cost=${$('cost').value}`;
+const f=(x,d=1)=>x==null?'–':Number(x).toFixed(d),d10=s=>String(s).slice(0,10);
+async function init(){$('api').value=API;try{META=await get('/api/meta')}catch(e){$('src').textContent='backend offline';toast('Cannot reach backend at '+API);return}
+ $('src').textContent=META.source;const D=META.dates;$('scrub').max=D.length-1;$('scrub').value=D.length-1;$('date').min=D[0];$('date').max=D.at(-1);$('date').value=D.at(-1);dash()}
+$('scrub').oninput=e=>{$('date').value=META.dates[e.target.value];dash()};
+['date','z','minvol','cost'].forEach(i=>$(i).onchange=()=>{if(i=='date'){const k=META.dates.indexOf($('date').value);if(k<0)return toast('Not a trading day in data');$('scrub').value=k}dash()});
+function status(r,z){if(r.signal)return'SIGNAL';if(Math.abs(r.z||0)>=z&&!r.liquid)return'ILLIQUID';if(Math.abs(r.z||0)>=1)return'WATCH';return'QUIET'}
+async function dash(){SNAP=await get(`/api/snapshot?date=${$('date').value}&${P()}`);const z=+$('z').value,S=SNAP.spreads,C=SNAP.contracts;
+ S.forEach(r=>r.st=status(r,z));const sig=S.filter(r=>r.st=='SIGNAL'),ill=S.filter(r=>r.st=='ILLIQUID');
+ $('banner').innerHTML=sig.length?`<div class="banner s">🟢 ${sig.length} actionable dislocation(s): z ≥ ${z}, liquid, and edge beats the cost hurdle.</div>`:
+  `<div class="banner q">🤫 Quiet by design — no spread clears liquidity, z-score <i>and</i> cost filters today.${ill.length?` (${ill.length} looked extreme but failed liquidity.)`:''}</div>`;
+ const liq=S.filter(r=>r.liquid).length;
+ $('kpis').innerHTML=[['Contracts live',C.length],['Spreads scanned',S.length],['Liquid spreads',liq],['Actionable signals',sig.length]].map(k=>`<div class="card kpi"><span>${k[0]}</span><b>${k[1]}</b></div>`).join('');
+ $('tbl').innerHTML='<tr><th>Pair</th><th>Expiry B</th><th>Spread bps</th><th>z</th><th>Edge / hurdle</th><th>Min vol</th><th>Status</th></tr>'+S.map((r,i)=>`<tr class="row" onclick="explain(${i})"><td>${r.pair}</td><td>${d10(r.exp_b)}</td><td>${f(r.bps)}</td><td>${f(r.z,2)}</td><td>${f(r.edge)} / ${f(r.hurdle)}</td><td>${r.vmin}</td><td><span class="badge ${r.st}">${r.st}</span></td></tr>`).join('');
+ $('explain').innerHTML='<span class="mut">Click a row.</span>';
+ const syms=[...new Set(C.map(c=>c.symbol))];
+ Plotly.newPlot('c-norm',syms.map((s,i)=>({type:'bar',name:s,x:C.filter(c=>c.symbol==s).map(c=>d10(c.expiry)),y:C.filter(c=>c.symbol==s).map(c=>c.norm),marker:{color:GOLD[i]}})),{...PL,barmode:'group',yaxis:{gridcolor:'#2e2715',autorange:true,tickformat:',.0f'}},{displayModeBar:false});
+ Plotly.newPlot('c-curve',syms.map((s,i)=>{const r=C.filter(c=>c.symbol==s).sort((a,b)=>a.dte-b.dte);return{name:s,x:r.map(c=>c.dte),y:r.map(c=>c.norm),mode:'lines+markers',line:{color:GOLD[i]}}}),{...PL,xaxis:{title:'days to expiry',gridcolor:'#2e2715'}},{displayModeBar:false})}
+function explain(i){const r=SNAP.spreads[i],[b,a]=r.pair.split('/');const cheap=r.bps<0?b:a,rich=r.bps<0?a:b;
+ $('explain').innerHTML=`<b>${r.pair}</b> (expiry ${d10(r.exp_b)} vs ${d10(r.exp_a)}) <span class="badge ${r.st}">${r.st}</span><br><br>
+ 1️⃣ Both legs converted to <b>₹/10 g on a 999 basis</b> (unit, quote base and purity normalized): ${f(r.nb,0)} vs ${f(r.na,0)}.<br>
+ 2️⃣ After removing expected <b>carry</b> between the two expiries, the spread is <b>${f(r.bps)} bps</b> against a past-20-day average of ${f(r.mu)} bps (σ ${f(r.sd)}) → <b>z = ${f(r.z,2)}</b>.<br>
+ 3️⃣ ${r.z==null?'Not enough history yet.':`${cheap} looks cheaper relative to ${rich}.`}<br>
+ 4️⃣ <b>Liquidity:</b> thinnest leg volume ${r.vmin}, OI ${r.omin} → ${r.liquid?'passes':'<b style="color:var(--bad)">fails</b>'} filter.<br>
+ 5️⃣ <b>Cost test:</b> expected reversion ${f(r.edge)} bps vs hurdle ${f(r.hurdle)} bps (4 fills + thin-day slippage) → ${r.edge>r.hurdle?'clears':'<b style="color:var(--bad)">does not clear</b>'}.<br><br>
+ <span class="mut">Evidence-only: settlement prices are not executable fills; volume ≠ depth.</span>`}
+async function loadSeries(){if(!SEL){const u=[...new Set(SNAP.spreads.map(r=>r.pair+'|'+r.exp_b))];$('sel').innerHTML=u.map(v=>`<option value="${v}">${v.split('|')[0]} · exp ${d10(v.split('|')[1])}</option>`).join('');$('sel').onchange=loadSeries;SEL=1}
+ const [p,e]=$('sel').value.split('|');const s=await get(`/api/series?pair=${p}&exp_b=${e}&${P()}`),x=s.map(r=>d10(r.date));
+ Plotly.newPlot('c-spread',[{x,y:s.map(r=>r.mu+2*r.sd),line:{width:0},showlegend:false},{x,y:s.map(r=>r.mu-2*r.sd),fill:'tonexty',fillcolor:'#f5c54218',line:{width:0},name:'±2σ band'},{x,y:s.map(r=>r.bps),name:'spread bps',line:{color:'#f5c542'}}],PL,{displayModeBar:false});
+ const g=s.filter(r=>r.signal);Plotly.newPlot('c-z',[{x,y:s.map(r=>r.z),line:{color:'#6ea8ff'},name:'z'},{x:g.map(r=>d10(r.date)),y:g.map(r=>r.z),mode:'markers',marker:{color:'#3ddc97',size:10},name:'signal'}],PL,{displayModeBar:false})}
+async function runBT(){$('b_banner').innerHTML='<div class="banner q">Running…</div>';
+ const q=`win=20&z_in=${b_zin.value}&z_out=${b_zout.value}&hold=${b_hold.value}&cost=${b_cost.value}&slip=${b_slip.value}&thin=${b_thin.value}&minvol=${$('minvol').value}`;const r=await get('/api/backtest?'+q),s=r.stats;
+ $('b_banner').innerHTML=`<div class="banner ${s.net>0&&s.tstat>2?'s':'n'}">${s.verdict}</div>`;if(!s.n)return;
+ $('b_kpi').innerHTML=[['Trades',s.n],['Hit rate',f(s.hit*100,0)+'%'],['Gross bps',f(s.gross,0)],['Costs bps',f(s.cost,0)],['Net bps',f(s.net,0)],['t-stat',f(s.tstat,2)],['Corr to gold',f(s.gold_corr,2)]].map(k=>`<div class="card kpi"><span>${k[0]}</span><b>${k[1]}</b></div>`).join('');
+ Plotly.newPlot('c-eq',[{x:r.equity.map(e=>d10(e.exit)),y:r.equity.map(e=>e.eq),fill:'tozeroy',line:{color:'#f5c542'},fillcolor:'#f5c54222'}],PL,{displayModeBar:false});
+ Plotly.newPlot('c-gold',[{x:r.trades.map(t=>t.gold),y:r.trades.map(t=>t.net),mode:'markers',marker:{color:r.trades.map(t=>t.net>0?'#3ddc97':'#ff5d5d')}}],{...PL,xaxis:{title:'gold move over holding (bps)',gridcolor:'#2e2715'},yaxis:{title:'strategy net (bps)',gridcolor:'#2e2715'}},{displayModeBar:false});
+ $('b_tbl').innerHTML='<tr><th>Pair</th><th>Entry</th><th>Exit</th><th>Direction</th><th>Gross</th><th>Cost</th><th>Net</th></tr>'+r.trades.map(t=>`<tr><td>${t.pair}</td><td>${d10(t.entry)}</td><td>${d10(t.exit)}</td><td>${t.dir}</td><td>${f(t.gross)}</td><td>${f(t.cost)}</td><td style="color:${t.net>0?'var(--ok)':'var(--bad)'}">${f(t.net)}</td></tr>`).join('')}
+async function loadLife(){const L=await get('/api/lifecycle'),sy=[...new Set(L.map(l=>l.symbol))],sh=new Date(L[0].first).getTime();
+ const tr=(n,k,c)=>({type:'bar',orientation:'h',name:n,y:L.map(l=>l.symbol+' '+d10(l.expiry).slice(0,7)),x:L.map(l=>k(l)),base:L.map(l=>c(l)),marker:{color:n=='Listed→liquid'?'#6a5a2a':n=='Liquid window'?'#f5c542':'#ff5d5d'}});
+ const ms=s=>s?new Date(s).getTime():null,dur=(a,b)=>Math.max(0,(ms(b)-ms(a)));
+ Plotly.newPlot('c-life',[tr('Listed→liquid',l=>dur(l.first,l.liquid_from||l.last),l=>ms(l.first)),tr('Liquid window',l=>l.liquid_from?dur(l.liquid_from,l.exit_by):0,l=>ms(l.liquid_from||l.first)),tr('Exit-by → expiry',l=>3*864e5,l=>ms(l.exit_by))].map(t=>({...t,x:t.x,base:t.base.map(v=>new Date(v).toISOString())})),
+  {...PL,barmode:'overlay',xaxis:{type:'date',gridcolor:'#2e2715'},yaxis:{autorange:'reversed',gridcolor:'#2e2715',tickfont:{size:9}},margin:{t:10,l:130,r:15,b:40}},{displayModeBar:false})}
+init();
+</script></body></html>
