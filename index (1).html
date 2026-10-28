@@ -24,6 +24,7 @@ th:first-child,td:first-child{text-align:left}tr.row{cursor:pointer}tr.row:hover
 input,select{background:#100e09;border:1px solid var(--line);color:var(--tx);padding:8px;border-radius:8px;font:13px Inter}input[type=range]{padding:0;accent-color:var(--gold)}
 .banner{padding:14px 18px;border-radius:14px;margin-bottom:16px;font-weight:600;border:1px solid}.banner.q{background:#ffffff08;border-color:var(--line)}.banner.s{background:#3ddc9712;border-color:var(--ok)}.banner.n{background:#ffb02012;border-color:var(--warn)}
 #explain{line-height:1.6}#toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--gold);padding:12px 18px;border-radius:12px;display:none;z-index:99}
+div[id^=c-]{touch-action:manipulation}
 .tag{background:#f5c54222;color:var(--gold);padding:3px 10px;border-radius:99px;font:700 11px Inter}
 </style></head><body>
 <header>
@@ -77,6 +78,15 @@ input,select{background:#100e09;border:1px solid var(--line);color:var(--tx);pad
 <script>
 const $=s=>document.getElementById(s);let API=localStorage.aurumApi||window.AURUM_API||"http://localhost:8000",META,SNAP,SEL;
 const PL={paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#f3ecd8'},margin:{t:10,l:55,r:15,b:40},xaxis:{gridcolor:'#2e2715'},yaxis:{gridcolor:'#2e2715'},legend:{orientation:'h'}};
+/* Zoom: scroll-wheel / pinch / drag to zoom in; double-click (mouse) or double-tap (touch) resets/zooms out */
+(function(){const _np=Plotly.newPlot;
+ function bindDT(g){if(g._dt)return;g._dt=1;let last=0,lx=0,ly=0;
+  g.addEventListener('touchend',e=>{const t=e.changedTouches[0],now=Date.now();
+   if(e.touches.length===0&&now-last<350&&Math.hypot(t.clientX-lx,t.clientY-ly)<35){
+    Plotly.relayout(g,{'xaxis.autorange':true,'yaxis.autorange':true});last=0;e.preventDefault()}
+   else{last=now;lx=t.clientX;ly=t.clientY}},{passive:false})}
+ Plotly.newPlot=function(id,d,l){const el=typeof id=='string'?document.getElementById(id):id;
+  return _np(el,d,l,{displayModeBar:false,scrollZoom:true,doubleClick:'reset+autosize',responsive:true}).then(g=>{bindDT(g);return g})}})();
 const GOLD=['#f5c542','#3ddc97','#6ea8ff','#ff8a5c'];
 const TABS=[['dash','📊 Dashboard'],['spread','📈 Spread Explorer'],['bt','🧪 Backtest'],['life','🗓 Lifecycle']];
 $('nav').innerHTML=TABS.map(t=>`<button data-t="${t[0]}" onclick="tab('${t[0]}')">${t[1]}</button>`).join('');
